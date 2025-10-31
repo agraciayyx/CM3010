@@ -1,0 +1,38 @@
+﻿# docker-compose.yml
+# CM3010 – Practical 1: MySQL Relational Database Environment
+# Supports Topic 2 (SQL, E/R), Topic 3 (Security), Topic 4 (Web App)
+
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: cm3010-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secure_123!
+      MYSQL_DATABASE: cm3010_db
+      MYSQL_USER: student
+      MYSQL_PASSWORD: student_pass_456!
+    ports:
+      - "3306:3306" # For external apps (Flask, Node.js, VS Code SQLTools)
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: --default-authentication-plugin=mysql_native_password
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: cm3010-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql-db
+      PMA_USER: student
+      PMA_PASSWORD: student_pass_456!
+    depends_on:
+      - mysql-db
+
+volumes:
+  mysql_data:
