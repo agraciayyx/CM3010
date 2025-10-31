@@ -1,0 +1,7 @@
+﻿node_modules/
+venv/
+.env
+*.log
+.DS_Store Thumbs.db
+.vscode/
+*.swp
