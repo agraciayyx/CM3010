@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Product - CSH Inventory</title>
+    <!-- Include Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1>Add New Product</h1>
+    <!-- Display current user info -->
+    <p><strong>Welcome, {{currentUser.username}} ({{currentUser.roleName}})</strong></p>
+
+    <!-- Display error message if present (Topic 4: Web Templating) -->
+    {{#error}}
+    <div class="alert alert-danger" role="alert">
+        {{error}}
+    </div>
+    {{/error}}
+
+    <!-- Add Product Form -->
+    <!-- Method is POST, action is /add-product -->
+    <form method="POST" action="/add-product">
+        <div class="mb-3">
+            <label for="name" class="form-label">Product Name</label>
+            <!-- Input field for product name -->
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <div class="mb-3">
+            <label for="category_id" class="form-label">Category</label>
+            <!-- Dropdown for selecting category -->
+            <!-- Populate options using Mustache loop (Topic 4: Web Templating) -->
+            <select class="form-control" id="category_id" name="category_id" required>
+                {{#categories}}
+                <option value="{{id}}">{{name}}</option>
+                {{/categories}}
+            </select>
+        </div>
+         <div class="mb-3">
+            <label for="unit_price" class="form-label">Unit Price</label>
+            <!-- Input field for unit price (number) -->
+            <input type="number" step="0.01" class="form-control" id="unit_price" name="unit_price" required>
+        </div>
+         <div class="mb-3">
+            <label for="stock_quantity" class="form-label">Initial Stock Quantity</label>
+            <!-- Input field for stock quantity (number) -->
+            <input type="number" class="form-control" id="stock_quantity" name="stock_quantity" required>
+        </div>
+        <button type="submit" class="btn btn-success">Add Product</button>
+        <!-- Link back to the main dashboard -->
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </form>
+
+    <!-- Navigation Bar (Maintain consistency with main dashboard) -->
+    <nav class="mt-4">
+        <a href="/" class="btn btn-primary">View Inventory</a>
+        {{#currentUser.isAdmin}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isAdmin}}
+        {{#currentUser.isManager}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isManager}}
+        <a href="/draw-stock" class="btn btn-warning">➖ Draw Stock</a>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </nav>
+
+</body>
+</html>

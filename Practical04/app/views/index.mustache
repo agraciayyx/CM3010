@@ -1,0 +1,55 @@
+<!-- views/index.mustache -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSH Inventory Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1 class="mb-4">📦 CSH Inventory Dashboard</h1>
+    <p><strong>Welcome, {{currentUser.username}} ({{currentUser.roleName}})</strong></p> <!-- Web Templating -->
+
+    <!-- Navigation -->
+    <nav class="mb-4">
+        <a href="/" class="btn btn-primary">View Inventory</a>
+        <a href="/summary" class="btn btn-info">📊 Summary</a>
+        {{#currentUser.isAdmin}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isAdmin}} <!-- Conditional rendering -->
+        <a href="/draw-stock" class="btn btn-warning">➖ Draw Stock</a>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </nav>
+
+    <!-- Inventory Table -->
+    <h2>Current Inventory</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Unit Price</th>
+                <th>Stock Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#products}} <!-- Loop through products -->
+            <tr>
+                <td>{{id}}</td>
+                <td>{{name}}</td>
+                <td>{{categoryName}}</td>
+                <td>${{unit_price}}</td>
+                <td>{{stock_quantity}}</td>
+            </tr>
+            {{/products}}
+        </tbody>
+    </table>
+
+    <!-- Admin Section (Only visible to Admin) -->
+    {{#currentUser.isAdmin}}
+    <h3 class="mt-4">👥 Admin Section (Users)</h3>
+    <p>Manage users and roles (not implemented in this practical).</p>
+    {{/currentUser.isAdmin}}
+
+</body>
+</html>
