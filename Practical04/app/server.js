@@ -294,6 +294,259 @@ app.post('/add-product', requireAuth, (req, res) => {
 });
 // --- End of Step 2: POST Route ---
 
+// --- Phase 4: Draw Stock Feature ---
+
+// --- Step 1: GET Route to Show Draw Stock Form ---
+app.get('/draw-stock', requireAuth, (req, res) => {
+    // The requireAuth middleware ensures req.session is valid and populated
+    // req.session contains { userId, username, roleId, roleName }
+
+    // --- Fetch Products for the Form ---
+    // The form needs a dropdown list of available products.
+    // Query the 'products' table to get all product names and IDs, along with current stock.
+    // Concept from Transcript: "SELECT gets information in the form of a table... FROM, and then the list of tables"
+    // We'll also JOIN with categories to show the category name alongside the product.
+    const productsQuery = `
+        SELECT p.id, p.name, p.stock_quantity, c.name AS category_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        ORDER BY p.name
+    `;
+
+    // Execute the query using the database connection object 'db'
+    // Concept from Transcript: "Libraries send commands... [db.query(...) for SELECT]"
+    db.query(productsQuery, (err, productResults) => {
+        // --- Handle Database Query Errors ---
+        if (err) {
+            console.error('Error fetching products for draw-stock form:', err);
+            // Log the error and send a generic server error response
+            // Never expose internal error details directly to the user
+            return res.status(500).send('Database Error: Could not load products.');
+        }
+
+        // --- Prepare Data for Template (Topic 4: Web Templating) ---
+        // Create the context object that will be passed to the Mustache template
+        const context = {
+            // Pass user information to the template (e.g., for welcome message, navigation)
+            currentUser: {
+                username: req.session.username,
+                roleName: req.session.roleName,
+                isAdmin: req.session.roleName === 'Administrator',
+                isManager: req.session.roleName === 'Manager',
+                isUser: req.session.roleName === 'Standard User'
+            },
+            // Pass the list of products retrieved from the database
+            products: productResults
+            // Note: No 'error' field is passed here initially, as this is the GET route (displaying the form)
+        };
+
+        // --- Render the Template (Topic 4: Web Templating) ---
+        // Use res.render to process the 'draw-stock.mustache' template
+        // with the 'context' object containing user details and products
+        console.log(`Rendering draw-stock form for user ${req.session.username}`);
+        res.render('draw-stock', context);
+    });
+});
+// --- End of Step 1: GET Route ---
+
+// --- Step 2: POST Route to Handle Form Submission ---
+app.post('/draw-stock', requireAuth, (req, res) => {
+    // The requireAuth middleware ensures req.session is valid and populated
+    // req.session contains { userId, username, roleId, roleName }
+
+    // --- Extract Form Data from Request Body ---
+    // The data submitted via the HTML form is available in req.body
+    // (parsed by the express.urlencoded middleware defined in Phase 2).
+    // Concept from Transcript: "Libraries send commands... [receiving data via req.body]"
+    const { product_id, quantity } = req.body;
+
+    // --- Basic Input Validation ---
+    // Check if required fields are present and quantity is a positive number.
+    // Concept from Transcript: "security considerations" - validate input before using it.
+    if (!product_id || !quantity || parseInt(quantity) <= 0) {
+        // If validation fails, re-render the form with an error message.
+        // This requires fetching products again to populate the dropdown.
+        const productsQuery = `
+            SELECT p.id, p.name, p.stock_quantity, c.name AS category_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            ORDER BY p.name
+        `;
+        db.query(productsQuery, (err, productResults) => {
+            if (err) {
+                console.error('Error fetching products for error display:', err);
+                return res.status(500).send('Database Error.');
+            }
+            // Pass user details, products, and the error message back to the template
+            res.render('draw-stock', {
+                currentUser: {
+                    username: req.session.username,
+                    roleName: req.session.roleName,
+                    isAdmin: req.session.roleName === 'Administrator',
+                    isManager: req.session.roleName === 'Manager',
+                    isUser: req.session.roleName === 'Standard User'
+                },
+                products: productResults,
+                error: 'Product and a valid quantity (> 0) are required.' // Pass the error message
+            });
+        });
+        return; // Stop execution after rendering the error page
+    }
+
+    // --- Database Query: Update Stock Quantity (Security Critical) ---
+    // Use a parameterised UPDATE query to safely reduce the stock.
+    // Concept from Transcript: "security considerations" and "parameterised queries".
+    // Using ? placeholders prevents SQL injection by ensuring user input is treated as data, not SQL code.
+    // Concept from Transcript: "UPDATE takes a table... SET... WHERE..."
+    // CRITICAL: Include a WHERE condition to ensure stock doesn't go negative (stock_quantity >= ?)
+    const updateQuery = 'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?';
+
+    // Execute the UPDATE query using the database connection object 'db'
+    // Pass the validated quantity, product ID, and quantity again (for the stock check) as parameters
+    // Concept from Transcript: "Libraries send commands... [db.query(...) for UPDATE]"
+    db.query(updateQuery, [parseInt(quantity), parseInt(product_id), parseInt(quantity)], (err, results) => {
+        // --- Handle Database Query Errors (e.g., constraint violations) ---
+        if (err) {
+            console.error('Error updating stock quantity:', err);
+            // Log the specific error
+            // Send a generic error response to the user
+            return res.status(500).send('Database Error: Could not update stock.');
+        }
+
+        // --- Check if the Update Affected Any Rows ---
+        // If results.affectedRows is 0, it means the WHERE condition (stock_quantity >= ?) failed.
+        // This indicates insufficient stock for the requested draw.
+        if (results.affectedRows === 0) {
+            console.log(`Attempted to draw ${quantity} units of product ID ${product_id}, but insufficient stock.`);
+            // Re-render the form with an error message about insufficient stock
+            const productsQuery = `
+                SELECT p.id, p.name, p.stock_quantity, c.name AS category_name
+                FROM products p
+                JOIN categories c ON p.category_id = c.id
+                ORDER BY p.name
+            `;
+            db.query(productsQuery, (err, productResults) => {
+                if (err) {
+                    console.error('Error fetching products for error display:', err);
+                    return res.status(500).send('Database Error.');
+                }
+                res.render('draw-stock', {
+                    currentUser: {
+                        username: req.session.username,
+                        roleName: req.session.roleName,
+                        isAdmin: req.session.roleName === 'Administrator',
+                        isManager: req.session.roleName === 'Manager',
+                        isUser: req.session.roleName === 'Standard User'
+                    },
+                    products: productResults,
+                    error: `Error: Insufficient stock for ${productResults.find(p => p.id == product_id)?.name || 'selected product'}. Requested: ${quantity}, Available: ${productResults.find(p => p.id == product_id)?.stock_quantity || 'N/A'}.`
+                });
+            });
+            return; // Stop execution after rendering the error page
+        }
+
+        // --- Success: Log and Redirect ---
+        // If the query executes successfully and affectedRows > 0, log the action and redirect.
+        console.log(`Stock withdrawn successfully by user ${req.session.username}. Product ID: ${product_id}, Quantity: ${quantity}`);
+        // Redirect back to the main inventory dashboard ('/') after successful draw.
+        // This prevents accidental resubmission if the user refreshes the page.
+        res.redirect('/');
+    });
+});
+// --- End of Step 2: POST Route ---
+
+// --- Phase 5: Summary Feature ---
+
+// --- Step 1: GET Route to Show Summary Data ---
+app.get('/summary', requireAuth, (req, res) => {
+    // The requireAuth middleware ensures req.session is valid and populated
+    // req.session contains { userId, username, roleId, roleName }
+
+    // --- Query 1: Total Inventory Value (Concept from Transcript: Aggregate Functions) ---
+    // Calculate the total value of all stock (SUM of unit_price * stock_quantity)
+    // Concept from Transcript: "Some isn't the only aggregate function... We have some which we met."
+    const totalValueQuery = 'SELECT SUM(unit_price * stock_quantity) AS total_value FROM products';
+
+    // --- Query 2: Total Number of Products (Concept from Transcript: Aggregate Functions) ---
+    // Count the total number of distinct products
+    // Concept from Transcript: "Count is completely agnostic to what the data is, it just counts the number of things..."
+    const totalProductsQuery = 'SELECT COUNT(*) AS total_count FROM products';
+
+    // --- Query 3: Stock by Category (Concept from Transcript: Aggregate Functions, GROUP BY) ---
+    // Sum the stock quantity for each category
+    // Concept from Transcript: "Grouping data... Group BY... aggregate functions... COUNT, SUM..."
+    const stockByCategoryQuery = `
+        SELECT c.name AS category_name, SUM(p.stock_quantity) AS total_stock
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        GROUP BY c.name
+        ORDER BY total_stock DESC
+    `;
+
+    // --- Query 4: Low Stock Alerts (Concept from Transcript: SELECT with WHERE) ---
+    // Find products with stock below a threshold (e.g., 10)
+    const lowStockQuery = 'SELECT name, stock_quantity FROM products WHERE stock_quantity < 10 ORDER BY stock_quantity ASC';
+
+    // Execute queries sequentially or in parallel (using Promises/callbacks)
+    // Here's a sequential approach using nested callbacks for clarity in this example
+    // Concept from Transcript: "Libraries send commands... [db.query(...) for SELECT with aggregates]"
+    db.query(totalValueQuery, (err, valueResults) => {
+        if (err) {
+            console.error('Error calculating total inventory value:', err);
+            return res.status(500).send('Database Error: Could not calculate total value.');
+        }
+        const totalValue = valueResults[0].total_value || 0; // Handle potential NULL result
+
+        db.query(totalProductsQuery, (err, countResults) => {
+            if (err) {
+                console.error('Error counting total products:', err);
+                return res.status(500).send('Database Error: Could not count products.');
+            }
+            const totalProducts = countResults[0].total_count;
+
+            db.query(stockByCategoryQuery, (err, categoryResults) => {
+                if (err) {
+                    console.error('Error calculating stock by category:', err);
+                    return res.status(500).send('Database Error: Could not calculate stock by category.');
+                }
+
+                db.query(lowStockQuery, (err, lowStockResults) => {
+                    if (err) {
+                        console.error('Error fetching low stock items:', err);
+                        return res.status(500).send('Database Error: Could not fetch low stock items.');
+                    }
+
+                    // --- Prepare Data for Template (Topic 4: Web Templating) ---
+                    // Create the context object that will be passed to the Mustache template
+                    const context = {
+                        // Pass user information to the template (e.g., for welcome message, navigation)
+                        currentUser: {
+                            username: req.session.username,
+                            roleName: req.session.roleName,
+                            isAdmin: req.session.roleName === 'Administrator',
+                            isManager: req.session.roleName === 'Manager',
+                            isUser: req.session.roleName === 'Standard User'
+                        },
+                        // Pass the aggregated summary data retrieved from the database
+                        totalValue: totalValue.toFixed(2), // Format to 2 decimal places for currency
+                        totalProducts: totalProducts,
+                        stockByCategory: categoryResults, // Array of {category_name, total_stock}
+                        lowStockItems: lowStockResults  // Array of {name, stock_quantity}
+                    };
+
+                    // --- Render the Template (Topic 4: Web Templating, Simple Data Visualiser) ---
+                    // Use res.render to process the 'summary.mustache' template
+                    // with the 'context' object containing user details and aggregated data
+                    console.log(`Rendering summary page for user ${req.session.username}`);
+                    res.render('summary', context);
+                });
+            });
+        });
+    });
+});
+// --- End of Step 1: GET Route ---
+
+
 // --- Step 3: Login Routes ---
 
 // GET route to show the login page

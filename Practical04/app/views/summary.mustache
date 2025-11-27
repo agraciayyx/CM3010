@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Summary - CSH Inventory</title>
+    <!-- Include Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1>📊 Inventory Summary</h1>
+    <!-- Display current user info -->
+    <p><strong>Welcome, {{currentUser.username}} ({{currentUser.roleName}})</strong></p>
+
+    <!-- Navigation Bar -->
+    <nav class="mb-4">
+        <a href="/" class="btn btn-primary">View Inventory</a>
+        {{#currentUser.isAdmin}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isAdmin}}
+        {{#currentUser.isManager}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isManager}}
+        <a href="/draw-stock" class="btn btn-warning">➖ Draw Stock</a>
+        <a href="/summary" class="btn btn-info">📊 Summary</a>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </nav>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Inventory Value</h5>
+                    <p class="card-text fs-3">${{totalValue}}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Number of Products</h5>
+                    <p class="card-text fs-3">{{totalProducts}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock by Category -->
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Stock by Category</h3>
+            <ul class="list-group">
+            {{#stockByCategory}}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{category_name}}
+                    <span class="badge bg-primary rounded-pill">{{total_stock}}</span>
+                </li>
+            {{/stockByCategory}}
+            </ul>
+        </div>
+
+        <!-- Low Stock Alerts -->
+        <div class="col-md-6">
+            <h3>⚠️ Low Stock Alerts</h3>
+            {{#lowStockItems.length}}
+            <ul class="list-group">
+            {{#lowStockItems}}
+                <li class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center">
+                    {{name}}
+                    <span class="badge bg-warning text-dark">{{stock_quantity}}</span>
+                </li>
+            {{/lowStockItems}}
+            </ul>
+            {{/lowStockItems.length}}
+            {{^lowStockItems.length}}
+            <p class="text-success">All stock levels are healthy!</p>
+            {{/lowStockItems.length}}
+        </div>
+    </div>
+
+</body>
+</html>

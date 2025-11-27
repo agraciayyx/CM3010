@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Stock - CSH Inventory</title>
+    <!-- Include Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1>Draw Stock</h1>
+    <!-- Display current user info -->
+    <p><strong>Welcome, {{currentUser.username}} ({{currentUser.roleName}})</strong></p>
+
+    <!-- Display error message if present (Topic 4: Web Templating) -->
+    {{#error}}
+    <div class="alert alert-danger" role="alert">
+        {{error}}
+    </div>
+    {{/error}}
+
+    <!-- Draw Stock Form -->
+    <!-- Method is POST, action is /draw-stock -->
+    <form method="POST" action="/draw-stock">
+        <div class="mb-3">
+            <label for="product_id" class="form-label">Select Product</label>
+            <!-- Dropdown for selecting product -->
+            <!-- Populate options using Mustache loop (Topic 4: Web Templating) -->
+            <select class="form-control" id="product_id" name="product_id" required>
+                {{#products}}
+                <option value="{{id}}">{{name}} ({{category_name}}) - {{stock_quantity}} available</option>
+                {{/products}}
+            </select>
+        </div>
+         <div class="mb-3">
+            <label for="quantity" class="form-label">Quantity to Draw</label>
+            <!-- Input field for quantity to draw (number) -->
+            <input type="number" min="1" class="form-control" id="quantity" name="quantity" required>
+        </div>
+        <button type="submit" class="btn btn-warning">Withdraw Stock</button>
+        <!-- Link back to the main dashboard -->
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </form>
+
+    <!-- Navigation Bar (Maintain consistency with main dashboard) -->
+    <nav class="mt-4">
+        <a href="/" class="btn btn-primary">View Inventory</a>
+        {{#currentUser.isAdmin}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isAdmin}}
+        {{#currentUser.isManager}}<a href="/add-product" class="btn btn-success">➕ Add Product</a>{{/currentUser.isManager}}
+        <a href="/draw-stock" class="btn btn-warning">➖ Draw Stock</a>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </nav>
+
+</body>
+</html>
